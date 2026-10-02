@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rekomendasi Belanja</title>
+  <style>
+    :root{--oranye:#ee4d2d;--teks:#222;--abu:#6b6b6b;--bg:#faf8f6;--garis:#e6e1dc}
+    *{box-sizing:border-box}
+    body{margin:0;font:16px/1.5 system-ui,sans-serif;color:var(--teks);background:var(--bg)}
+    .top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 5vw;background:#fff;border-bottom:1px solid var(--garis)}
+    .top h1{margin:0;font-size:1.25rem}
+    .cari{display:flex;gap:8px;flex-wrap:wrap}
+    input{font:inherit;padding:8px 12px;border:1px solid var(--garis);border-radius:6px;background:#fff}
+    :focus-visible{outline:2px solid var(--oranye);outline-offset:2px}
+    .layout{display:flex;gap:20px;align-items:flex-start;padding:20px 5vw}
+    .grid{flex:1;width:100%;min-width:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+    .kategori{display:flex;flex-direction:column;gap:6px;width:220px;flex:none;position:sticky;top:16px}
+    .kategori[hidden]{display:none}
+    .kat-item{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;font:inherit;font-size:.9rem;padding:6px 12px;border:1px solid var(--garis);border-radius:999px;background:#fff;color:var(--teks);cursor:pointer}
+    .kat-item:hover{border-color:var(--oranye)}
+    .kat-item.aktif{background:var(--oranye);border-color:var(--oranye);color:#fff}
+    .jml{font-size:.75rem;font-weight:700;padding:0 8px;border-radius:999px;background:var(--bg);color:var(--abu)}
+    .kat-item.aktif .jml{background:rgba(255,255,255,.25);color:#fff}
+    @media (max-width:760px){
+      .layout{flex-direction:column;align-items:stretch}
+      .kategori{flex-direction:row;width:auto;position:static;overflow-x:auto;padding-bottom:4px}
+      .kat-item{width:auto;flex:none;white-space:nowrap}
+    }
+    .kartu{background:#fff;border:1px solid var(--garis);border-radius:8px;overflow:hidden;display:flex;flex-direction:column}
+    .sub{margin:-4px 0 0;color:var(--abu);font-size:.8rem;line-height:1.3}
+    .thumb{position:relative}
+    .badge{position:absolute;top:8px;left:8px;padding:2px 10px;border-radius:999px;font-size:.72rem;font-weight:700;letter-spacing:.03em;color:#fff}
+    .badge.NEW{background:#1d6fd8}
+    .badge.HOT{background:#d62828}
+    .badge.RECOMMENDED{background:#1a8a4a}
+    .kartu img,.noimg{width:100%;aspect-ratio:1;object-fit:cover;background:#eee}
+    .isi{padding:12px;display:flex;flex-direction:column;gap:6px;flex:1}
+    .isi h2{margin:0;font-size:.95rem;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .beli{margin-top:auto;text-align:center;padding:8px;border-radius:6px;background:var(--oranye);color:#fff;text-decoration:none}
+    .pesan{grid-column:1/-1;color:var(--abu)}
+    footer{padding:20px 5vw;color:var(--abu);font-size:.85rem}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <h1 id="judul">Rekomendasi Belanja</h1>
+    <div class="cari">
+      <input id="q" placeholder="Cari produk" aria-label="Cari produk">
+    </div>
+  </header>
+  <div class="layout">
+    <nav class="kategori" id="kategori" aria-label="Kategori" hidden></nav>
+    <main class="grid" id="grid"><p class="pesan">Memuat produk...</p></main>
+  </div>
+  <footer>Link di situs ini adalah link afiliasi. Kami bisa mendapat komisi dari pembelian, tanpa biaya tambahan untuk kamu.</footer>
+
+  <script>
+    // Ganti dengan URL web app Apps Script (berakhiran /exec)
+    const API = 'GANTI_DENGAN_URL_EXEC';
+    const LABEL_BADGE = { NEW: '🆕 NEW', HOT: '🔥 HOT', RECOMMENDED: '👍 RECOMMENDED' };
+    let semua = [];
+    const grid = document.getElementById('grid');
+    const q = document.getElementById('q');
+    const navKat = document.getElementById('kategori');
+    let aktifKat = '';
+
+    function el(tag, props, children) {
+      const e = document.createElement(tag);
+      Object.assign(e, props || {});
+      (children || []).forEach(c => e.appendChild(c));
+      return e;
+    }
+
+    // Daftar kategori vertikal + jumlah produk per kategori; klik lagi untuk kembali ke "Semua"
+    function renderKategori() {
+      const hitung = {};
+      semua.forEach(p => { if (p.kategori) hitung[p.kategori] = (hitung[p.kategori] || 0) + 1; });
+      const daftar = Object.keys(hitung).sort((a, b) => hitung[b] - hitung[a] || a.localeCompare(b, 'id'));
+      navKat.replaceChildren();
+      if (!daftar.length) { navKat.hidden = true; return; }
+      navKat.hidden = false;
+      [['', 'Semua', semua.length]].concat(daftar.map(k => [k, k, hitung[k]])).forEach(([nilai, label, jml]) => {
+        const b = el('button', { type: 'button', className: 'kat-item' + (aktifKat === nilai ? ' aktif' : '') }, [
+          el('span', { textContent: label }),
+          el('span', { className: 'jml', textContent: String(jml) })
+        ]);
+        b.setAttribute('aria-pressed', aktifKat === nilai ? 'true' : 'false');
+        b.addEventListener('click', () => { aktifKat = (aktifKat === nilai) ? '' : nilai; renderKategori(); tampil(); });
+        navKat.appendChild(b);
+      });
+    }
+
+    function tampil() {
+      const kata = q.value.trim().toLowerCase();
+      const hasil = semua.filter(p =>
+        (!kata || (p.nama + ' ' + p.subjudul).toLowerCase().includes(kata)) && (!aktifKat || p.kategori === aktifKat));
+      grid.replaceChildren();
+      if (!hasil.length) { grid.appendChild(el('p', { className: 'pesan', textContent: 'Belum ada produk yang cocok.' })); return; }
+      hasil.forEach(p => {
+        const gambar = /^https?:\/\//i.test(p.gambar)
+          ? el('img', { src: p.gambar, alt: p.nama, loading: 'lazy', referrerPolicy: 'no-referrer' })
+          : el('div', { className: 'noimg' });
+        const thumb = el('div', { className: 'thumb' }, [gambar]);
+        if (LABEL_BADGE[p.badge]) thumb.appendChild(el('span', { className: 'badge ' + p.badge, textContent: LABEL_BADGE[p.badge] }));
+        const isi = [el('h2', { textContent: p.nama })];
+        if (p.subjudul) isi.push(el('p', { className: 'sub', textContent: p.subjudul }));
+        const beli = el('a', { className: 'beli', href: p.link, target: '_blank', rel: 'nofollow sponsored noopener', textContent: 'Beli di Shopee' });
+        beli.addEventListener('click', () => fetch(API + '?aksi=klik&id=' + p.id, { mode: 'no-cors', keepalive: true }).catch(() => {}));
+        isi.push(beli);
+        grid.appendChild(el('article', { className: 'kartu' }, [thumb, el('div', { className: 'isi' }, isi)]));
+      });
+    }
+
+    fetch(API + '?aksi=produk')
+      .then(r => r.json())
+      .then(data => {
+        semua = data.produk;
+        if (data.nama) { document.getElementById('judul').textContent = data.nama; document.title = data.nama; }
+        renderKategori();
+        tampil();
+      })
+      .catch(() => { grid.replaceChildren(el('p', { className: 'pesan', textContent: 'Produk gagal dimuat. Coba muat ulang halaman.' })); });
+
+    q.addEventListener('input', tampil);
+  </script>
+</body>
+</html>
