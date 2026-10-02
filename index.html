@@ -57,7 +57,7 @@
 
   <script>
     // Ganti dengan URL web app Apps Script (berakhiran /exec)
-    const API = 'https://script.google.com/macros/s/AKfycbwsTuMiMuD6Lxc3ykhH-XWhKqti_T6miEROqvWm0ofaO2IA0OlA5Cj4eok6qXxbfKapiA/exec';
+    const API = 'GANTI_DENGAN_URL_EXEC';
     const LABEL_BADGE = { NEW: '🆕 NEW', HOT: '🔥 HOT', RECOMMENDED: '👍 RECOMMENDED' };
     let semua = [];
     const grid = document.getElementById('grid');
@@ -112,8 +112,21 @@
       });
     }
 
-    fetch(API + '?aksi=produk')
-      .then(r => r.json())
+    // Ambil data lewat tag <script> (JSONP) supaya tidak terhalang aturan CORS
+    function muat(url) {
+      return new Promise((ok, gagal) => {
+        const nama = 'cb_' + Date.now() + Math.floor(Math.random() * 1e6);
+        const s = document.createElement('script');
+        const bersih = () => { clearTimeout(t); delete window[nama]; s.remove(); };
+        const t = setTimeout(() => { bersih(); gagal(new Error('timeout')); }, 20000);
+        window[nama] = d => { bersih(); ok(d); };
+        s.onerror = () => { bersih(); gagal(new Error('gagal')); };
+        s.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + nama;
+        document.head.appendChild(s);
+      });
+    }
+
+    muat(API + '?aksi=produk')
       .then(data => {
         semua = data.produk;
         if (data.nama) { document.getElementById('judul').textContent = data.nama; document.title = data.nama; }
