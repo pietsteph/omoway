@@ -97,7 +97,7 @@
     function tampil() {
       const kata = q.value.trim().toLowerCase();
       const hasil = semua.filter(p =>
-        (!kata || (p.nama + ' ' + p.subjudul).toLowerCase().includes(kata)) && (!aktifKat || p.kategori === aktifKat));
+        (!kata || (p.nama + ' ' + p.brand + ' ' + p.subjudul).toLowerCase().includes(kata)) && (!aktifKat || p.kategori === aktifKat));
       grid.replaceChildren();
       if (!hasil.length) { grid.appendChild(el('p', { className: 'pesan', textContent: 'Belum ada produk yang cocok.' })); return; }
       hasil.forEach(p => {
