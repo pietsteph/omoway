@@ -113,7 +113,7 @@
       grid.replaceChildren();
       if (!hasil.length) { grid.appendChild(el('p', { className: 'pesan', textContent: 'Belum ada produk yang cocok.' })); return; }
       hasil.forEach(p => {
-        const gambar = /^https?:\/\//i.test(p.gambar)
+        const gambar = p.gambar || /^https?:\/\//i.test(p.gambar)
           ? el('img', { src: p.gambar, alt: p.nama, loading: 'lazy', referrerPolicy: 'no-referrer' })
           : el('div', { className: 'noimg' });
         const thumb = el('div', { className: 'thumb' }, [gambar]);
