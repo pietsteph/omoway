@@ -70,6 +70,8 @@
   <footer>Link di situs ini adalah link afiliasi. Kami bisa mendapat komisi dari pembelian, tanpa biaya tambahan untuk kamu.</footer>
 
   <script>
+    const SHEET_ID = '1-IF1MVZGs5MwSxmprKfdwUVTUUJ253yPkdTrL0Wd8Uk'; // bagian di antara /d/ dan /edit pada URL Google Sheet
+    const SHEET_NAME = 'Produk';
     const API = 'https://script.google.com/a/~/macros/s/AKfycbwsTuMiMuD6Lxc3ykhH-XWhKqti_T6miEROqvWm0ofaO2IA0OlA5Cj4eok6qXxbfKapiA/exec';
     let semua = [];
     const grid = document.getElementById('grid');
@@ -125,15 +127,65 @@
       });
     }
 
-    fetch(API + '?aksi=produk')
-      .then(r => r.json())
-      .then(data => {
-        semua = data.produk;
-        if (data.nama) { document.getElementById('judul').textContent = data.nama; document.title = data.nama; }
-        renderKategori();
-        tampil();
-      })
-      .catch(() => { grid.replaceChildren(el('p', { className: 'pesan', textContent: 'Produk gagal dimuat. Coba muat ulang halaman.' })); });
+    // fetch(API + '?aksi=produk')
+    //   .then(r => r.json())
+    //   .then(data => {
+    //     semua = data.produk;
+    //     if (data.nama) { document.getElementById('judul').textContent = data.nama; document.title = data.nama; }
+    //     renderKategori();
+    //     tampil();
+    //   })
+    //   .catch(() => { grid.replaceChildren(el('p', { className: 'pesan', textContent: 'Produk gagal dimuat. Coba muat ulang halaman.' })); });
+
+    // Data dibaca langsung dari Google Sheets lewat endpoint gviz (dimuat via tag <script>, tanpa CORS)
+    function muatSheet() {
+      return new Promise((ok, gagal) => {
+        const fn = 'gv_' + Date.now() + Math.floor(Math.random() * 1e6);
+        const s = document.createElement('script');
+        const bersih = () => { clearTimeout(t); delete window[fn]; s.remove(); };
+        const t = setTimeout(() => { bersih(); gagal(new Error('timeout')); }, 12000);
+        window[fn] = d => { bersih(); if (d && d.status === 'ok') ok(d.table); else gagal(new Error('status gviz bukan ok')); };
+        s.onerror = () => { bersih(); gagal(new Error('gagal memuat')); };
+        s.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?sheet=' + encodeURIComponent(SHEET_NAME) +
+                '&headers=1&tqx=out:json;responseHandler:' + fn;
+        document.head.appendChild(s);
+      });
+    }
+
+    // Ubah tabel gviz jadi daftar produk. Kolom dicari dari nama header, jadi urutan kolom bebas.
+    function ubahTabel(tabel) {
+      const label = tabel.cols.map(c => String(c.label || '').trim().toLowerCase());
+      const idx = (nama, cadangan) => { const i = label.indexOf(nama); return i >= 0 ? i : cadangan; };
+      const cNama = idx('nama', 0), cBrand = idx('brand', 1), cSub = idx('subtitle', 2), cLink = idx('link', 3);
+      const cGambar = idx('gambar', 4), cKategori = idx('kategori', 5), cBadge = idx('badge', 7);
+      const nilai = (baris, i) => { const c = baris.c[i]; return c && c.v != null ? String(c.v).trim() : ''; };
+      return tabel.rows.map((r, i) => {
+        const badge = nilai(r, cBadge).toUpperCase();
+        return {
+          id: i + 2,
+          nama: nilai(r, cNama),
+          brand: String(r[cBrand] || ''),
+          subtitle: String(r[cSub] || '').trim(),
+          link: nilai(r, cLink),
+          gambar: nilai(r, cGambar),
+          kategori: nilai(r, cKategori),
+          subjudul: nilai(r, cSub),
+          badge: badge };
+      }).filter(p => p.nama && /^https?:\/\//i.test(p.link)).reverse();
+    }
+
+    function cobaMuat(sisa) {
+      return muatSheet().catch(err => {
+        if (sisa <= 0) throw err;
+        return new Promise(r => setTimeout(r, 1500)).then(() => cobaMuat(sisa - 1));
+      });
+    }
+    cobaMuat(2)
+      .then(tabel => { semua = ubahTabel(tabel); renderKategori(); tampil(); })
+      .catch(err => {
+        console.warn('Gagal memuat sheet:', err.message, '- pastikan sheet dibagikan: siapa saja yang punya link dapat melihat');
+        grid.replaceChildren(el('p', { className: 'pesan', textContent: 'Produk gagal dimuat. Coba muat ulang halaman.' }));
+      });
 
     q.addEventListener('input', tampil);
   </script>
