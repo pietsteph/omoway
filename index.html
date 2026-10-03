@@ -32,7 +32,7 @@
     .kat-item:hover{border-color:var(--accent)}
     .kat-item.aktif{background:var(--accent);border-color:var(--accent)}
     .jml{font-size:.75rem;font-weight:700;padding:0 8px;border-radius:999px;background:var(--bg);color:var(--teks)}
-    .kat-item.aktif .jml{background:rgba(255,255,255,.25);color:#000}
+    /* .kat-item.aktif .jml{background:rgba(255,255,255,.25);color:#000} */
     @media (max-width:760px){
       .layout{flex-direction:column;align-items:stretch}
       .kategori{flex-direction:row;width:auto;position:static;overflow-x:auto;padding-bottom:4px;flex-wrap:nowrap}
@@ -164,8 +164,8 @@
         return {
           id: i + 2,
           nama: nilai(r, cNama),
-          brand: String(r[cBrand] || ''),
-          subtitle: String(r[cSub] || '').trim(),
+          brand: nilai(r, cBrand),
+          subtitle: nilai(r, cSub),
           link: nilai(r, cLink),
           gambar: nilai(r, cGambar),
           kategori: nilai(r, cKategori),
